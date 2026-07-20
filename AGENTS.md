@@ -20,6 +20,12 @@
 - 创建 Notebook/Section 不能依赖 Graph 自动回滚；必须在文档中给出 OneNote/OneDrive 手动清理步骤。
 - 不使用 `git reset --hard` 或覆盖用户既有改动；小而可审查的提交优先。
 
+## Git 远程与个人更新
+
+- `origin` 保持指向上游 `https://github.com/purpleslurple/onenote-mcp-server`，用于查看和同步原项目更新。
+- `fork` 指向个人代码仓库 `https://github.com/Kaomsos/onenote-mcp-server.git`，是本项目变更的推送目标。
+- 更新个人代码前先检查工作树、运行相关测试并创建本地提交；使用 `git push fork main:main` 推送。不得向上游 `origin` 直接推送。
+
 ## 自我迭代与参考项目
 
 - 每解决一个 non-trivial 问题，在 `docs/lessons/` 按主题记录问题、根因、方案与预防措施；必要时同步本文件。
