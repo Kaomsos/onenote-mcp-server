@@ -23,4 +23,6 @@
 ## 自我迭代与参考项目
 
 - 每解决一个 non-trivial 问题，在 `docs/lessons/` 按主题记录问题、根因、方案与预防措施；必要时同步本文件。
-- `azure-onenote-mcp-server/` 仅作本地参考，必须被 `.gitignore` 忽略。可记录 API 行为和来源 commit，但不得复制、导入或提交其代码。
+- 参考对标项目固定为 [ZubeidHendricks/azure-onenote-mcp-server](https://github.com/ZubeidHendricks/azure-onenote-mcp-server)。它用于逆向分析创建 Notebook、Section 等 Graph 调用；其 Client Secret 认证方式不得迁入主项目。
+- 初始化或更新参考目录时，在主项目根目录执行：`git clone https://github.com/ZubeidHendricks/azure-onenote-mcp-server.git`。若目录已存在，使用该目录自身的 Git 状态与提交记录进行分析，不重复 clone 或覆盖其中内容。
+- clone 目标必须是主项目根目录下的 `azure-onenote-mcp-server/`，并由 `.gitignore` 忽略。可在设计文档记录参考 commit 与 API 行为，但不得复制、导入、暂存或提交其代码。
