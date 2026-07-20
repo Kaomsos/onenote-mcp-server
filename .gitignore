@@ -29,6 +29,7 @@ Thumbs.db
 
 # Auth tokens and sensitive files
 .mcp-onenote-cache.json
+azure-onenote-mcp-server/
 *.token
 *.key
 .env
@@ -38,9 +39,10 @@ Thumbs.db
 *.log
 logs/
 
-# Test files
-test_*.py
-*_test.py
+# Test run artifacts
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Temporary files
 tmp/

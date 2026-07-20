@@ -1,252 +1,87 @@
 # OneNote MCP Server
 
-A complete, robust Model Context Protocol (MCP) server for Microsoft OneNote integration with Claude Desktop. Access your entire OneNote knowledge base through natural language queries.
+一个采用 Microsoft Device Code Flow 的本地 FastMCP 服务，用于读取和管理当前用户的 OneNote。创建与更新操作默认关闭，避免 Agent 意外改动笔记。
 
-## 🎯 What This Does
+## 安全模型
 
-Transform your OneNote notebooks into an AI-accessible knowledge base:
-- **List all your notebooks, sections, and pages**
-- **Read page content** for analysis and search
-- **Natural language queries** like "Show me my DevOps notes" or "Find pages about project planning"
-- **Secure OAuth authentication** with Microsoft Graph API
-- **Bulletproof error handling** with detailed debugging
+- 仅需要 `AZURE_CLIENT_ID`；绝不配置 Client Secret。
+- Token cache 默认启用，并由 `msal-extensions` 使用 Windows DPAPI、macOS Keychain 或 Linux LibSecret 加密。
+- `ONENOTE_ENABLE_WRITES=false` 为默认值。需要创建 Notebook、Section 或 Page 时，必须显式改为 `true`。
+- 不要把环境变量、token cache、MCP 客户端配置文件或测试输出提交到 Git。
 
-## ✨ Why This Implementation
+## 环境与安装
 
-Unlike other OneNote MCP servers, this one:
-- ✅ **Actually works** - tested extensively with real OneNote data
-- ✅ **Complete functionality** - all core OneNote operations implemented
-- ✅ **Robust authentication** - two-step device flow that handles edge cases
-- ✅ **Production ready** - proper error handling and logging
-- ✅ **Easy setup** - detailed instructions for non-technical users
+需要 Python 3.10+、[uv](https://docs.astral.sh/uv/) 和一个全球 Azure / Microsoft 账户。
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.10+ 
-- [uv package manager](https://docs.astral.sh/uv/getting-started/installation/) (recommended) or pip
-- Claude Desktop
-- Microsoft Azure account (free)
-
-### 1. Install uv (if you don't have it)
-```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# or with Homebrew
-brew install uv
-```
-
-### 2. Clone and Setup
-```bash
-git clone https://github.com/yourusername/onenote-mcp-server.git
+```powershell
+git clone <your-fork-or-working-copy>
 cd onenote-mcp-server
-
-# Create virtual environment and install dependencies
-uv sync
+uv sync --all-groups
+uv run pytest
 ```
 
-### 3. Azure App Registration
-You need to create an Azure app to access OneNote. **Don't worry, it's free and takes 5 minutes:**
+在 Microsoft Entra App Registration 中创建或使用一个 **Public client** 应用：
 
-1. Go to [Azure Portal](https://portal.azure.com) (sign in with your Microsoft account)
-2. Navigate to **Azure Active Directory** → **App registrations** → **New registration**
-3. Fill out the form:
-   - **Name**: "OneNote MCP Server" (or whatever you like)
-   - **Supported account types**: "Accounts in any organizational directory and personal Microsoft accounts"
-   - **Redirect URI**: Select "Public client/native" and enter: `https://login.microsoftonline.com/common/oauth2/nativeclient`
-4. Click **Register**
-5. Copy the **Application (client) ID** - you'll need this!
+1. 选择包含个人 Microsoft 账户的账户类型（如适用）。
+2. 在 **Authentication → Advanced settings** 中启用 **Allow public client flows**。
+3. 添加 Microsoft Graph **Delegated** 权限：`Notes.ReadWrite` 和 `User.Read`。
+4. 记录 Application (client) ID。不要创建或配置 Client Secret。
 
-### 4. Add Permissions
-Still in your Azure app:
-1. Go to **API permissions** → **Add a permission**
-2. Select **Microsoft Graph** → **Delegated permissions**
-3. Add these permissions:
-   - `Notes.Read` - Read OneNote notebooks
-   - `Notes.ReadWrite` - Create/modify OneNote content (optional but recommended)
-   - `User.Read` - Read user profile
-4. Click **Grant admin consent** (the button at the top)
+`Notes.ReadWrite` 是本服务读取和写入用户 OneNote 的最小实用权限。企业租户若阻止 Device Code Flow，应由管理员先处理条件访问策略。
 
-### 5. Configure Claude Desktop
-Edit your Claude Desktop config file:
+## 启动与配置
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\\Claude\\claude_desktop_config.json`
+临时启动（默认不允许写入）：
 
-Add this configuration (replace `/ABSOLUTE/PATH/TO/PARENT/FOLDER/weather` with your actual path):
+```powershell
+$env:AZURE_CLIENT_ID = "your-public-client-id"
+$env:ONENOTE_ENABLE_WRITES = "false"
+uv run onenote-mcp-server
+```
 
-**Basic configuration:**
+Claude Desktop、Cursor 或任意支持 stdio MCP 的本地 Agent 都使用同一个服务定义；将下列对象加入该客户端的 MCP servers 配置，路径替换为本机绝对路径：
+
 ```json
 {
-  "mcpServers": {
-    "onenote": {
-      "command": "uv",
-      "args": [
-        "--directory", "/FULL/PATH/TO/onenote-mcp-server",
-        "run", "python", "onenote_mcp_server.py"
-      ],
-      "env": {
-        "AZURE_CLIENT_ID": "your-azure-client-id-here"
-      }
+  "onenote": {
+    "command": "uv",
+    "args": [
+      "--directory",
+      "E:\\code\\MCP\\onenote-mcp-server",
+      "run",
+      "onenote-mcp-server"
+    ],
+    "env": {
+      "AZURE_CLIENT_ID": "your-public-client-id",
+      "ONENOTE_CACHE_TOKENS": "true",
+      "ONENOTE_ENABLE_WRITES": "false"
     }
   }
 }
 ```
 
-**With explicit token caching control:**
-```json
-{
-  "mcpServers": {
-    "onenote": {
-      "command": "uv",
-      "args": [
-        "--directory", "/FULL/PATH/TO/onenote-mcp-server",
-        "run", "python", "onenote_mcp_server.py"
-      ],
-      "env": {
-        "AZURE_CLIENT_ID": "your-azure-client-id-here",
-        "ONENOTE_CACHE_TOKENS": "true"
-      }
-    }
-  }
-}
-```
+Claude Desktop 的传统本地配置使用 `claude_desktop_config.json`；也可使用其本地 MCP/Extension 设置。Cursor 和其他本地 Agent 使用相同的 stdio 字段，只需放入各自的 MCP 配置文件。
 
-Replace `/FULL/PATH/TO/onenote-mcp-server` with the actual path to this project.
+## 首次认证与试用
 
-### 6. Restart Claude Desktop
-Completely quit and restart Claude Desktop. You should see OneNote tools in the 🔨 menu.
+1. 在 MCP 客户端调用 `start_authentication`。
+2. 在返回的 `verification_uri` 打开浏览器，输入 `user_code` 并完成登录。
+3. 调用 `complete_authentication`，随后使用 `check_authentication`。
+4. 先调用 `list_notebooks`、`list_sections`、`list_pages` 验证只读访问。
 
-## 🔐 First Time Authentication
+进行创建验收前，必须先获得账号所有者的明确确认。确认后，把配置中的 `ONENOTE_ENABLE_WRITES` 设为 `true`，并只操作唯一命名的 `MCP-ACCEPTANCE-<timestamp>` 测试 Notebook：
 
-1. In Claude Desktop, say: **"Start OneNote authentication"**
-2. Claude will give you a URL and code
-3. Visit the URL in your browser, enter the code, and sign in
-4. **Browser compatibility**: 
-   - ✅ **Firefox** (tested with 139.0.4) - works perfectly
-   - ❌ **Safari** - may have issues with Microsoft OAuth redirect
-   - ✅ **Chrome/Edge** - should work (Microsoft's browsers)
-5. Come back to Claude and say: **"Complete OneNote authentication"**
-6. You're ready to go!
+1. `create_notebook(name)` 并记录返回的 ID。
+2. `create_section(notebook_id, name)`。
+3. `create_page(section_id, title, content_html)`。
+4. 用 list/read 工具回读三层对象和页面内容。
+5. 把 `ONENOTE_ENABLE_WRITES` 恢复为 `false`，随后在 OneNote/OneDrive 手动删除整个测试 Notebook。
 
-### Token Persistence
+Notebook 和 Section 不支持由本服务自动回滚；测试失败后同样应在 OneNote/OneDrive 中手动清理新建的测试资源。
 
-By default, authentication tokens are cached securely on your local machine so you only need to authenticate once every few weeks/months. 
+## 工具接口
 
-**To disable token caching** (for security-sensitive environments):
-```json
-{
-  "mcpServers": {
-    "onenote": {
-      "command": "uv",
-      "args": [
-        "--directory", "/FULL/PATH/TO/onenote-mcp-server",
-        "run", "python", "onenote_mcp_server.py"
-      ],
-      "env": {
-        "AZURE_CLIENT_ID": "YOUR_CLIENT_ID_HERE",
-        "ONENOTE_CACHE_TOKENS": "false"
-      }
-    }
-  }
-}
-```
-
-**Token caching options:**
-- `ONENOTE_CACHE_TOKENS=true` (default) - Tokens persist across sessions
-- `ONENOTE_CACHE_TOKENS=false` - Authenticate every session (more secure)
-
-## 📖 Usage Examples
-
-Once authenticated, try these commands in Claude Desktop:
-
-```
-List my OneNote notebooks
-Show me sections in my Work notebook  
-What pages are in my Ideas section?
-Read the content of my "Project Plan" page
-```
-
-## 🛠 Troubleshooting
-
-### "No tools available" in Claude Desktop
-- Make sure you restarted Claude Desktop after config changes
-- Check that the path in your config is correct (use full absolute path)
-- Verify uv is installed: `uv --version`
-
-### Authentication issues
-- **Safari OAuth problems**: Safari may not handle Microsoft's OAuth redirect properly - use Firefox or Chrome instead
-- **"nativeclient" prompts**: Normal Microsoft OAuth behavior, but if it blocks authentication, try a different browser
-- **Authentication expired**: Use "Check OneNote authentication status" to see token expiry
-- **Clear cached tokens**: Use "Clear OneNote token cache" if you need to reset authentication
-- **Recommended browsers**: Firefox (confirmed working), Chrome, or Edge for best compatibility
-
-### "Command not found" errors
-- Make sure uv is in your PATH
-- Alternative: replace `"uv"` with `"python"` in the config and use the full path to your Python interpreter
-
-### Permission denied errors
-- Check the file permissions in your project directory
-- Make sure Claude Desktop can read the files
-
-## 🏗 Development
-
-### Project Structure
-```
-onenote-mcp-server/
-├── onenote_mcp_server.py      # Main server implementation
-├── pyproject.toml             # Dependencies and metadata  
-├── README.md                  # This file
-├── LICENSE                    # MIT License
-└── .gitignore                 # Git ignore rules
-```
-
-### Key Features
-- **Two-step authentication**: Handles device code flow properly
-- **Complete Graph API integration**: All OneNote operations supported
-- **Robust error handling**: Detailed logging and graceful failures
-- **FastMCP framework**: Clean, maintainable code structure
-- **Environment variable configuration**: Secure credential handling
-
-### Adding New Features
-The server is built with FastMCP, making it easy to add new tools:
-
-```python
-@mcp.tool()
-async def your_new_tool(param: str) -> str:
-    """Description of what your tool does."""
-    # Your implementation here
-    return result
-```
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repo
-2. Create a feature branch
-3. Add tests for new functionality  
-4. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [FastMCP](https://github.com/jlowin/fastmcp) framework
-- Uses Microsoft Graph API for OneNote access
-- Inspired by the amazing potential of AI + personal knowledge bases
-
-## ⚠️ Important Notes
-
-- This server only reads/writes data you already have access to
-- Your Azure app credentials stay on your machine
-- All authentication happens directly between you and Microsoft
-- No data is sent to third parties
-
----
-
-**Built with ❤️ for the Claude + OneNote community**
-
-*Turn your OneNote into an AI-accessible knowledge base!*
+- `create_notebook(name: str)`：创建一个 Notebook。旧版的 `description` 参数已移除，因为 Microsoft Graph Notebook 创建接口不支持它。
+- `create_section(notebook_id: str, name: str)`：在指定 Notebook 创建 Section。
+- `create_page(section_id, title, content_html)`、`update_page_content`：保持原有功能，但受写入开关保护。
+- `clear_token_cache`：删除本地加密 token cache，之后需要重新进行 Device Code Flow。

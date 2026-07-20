@@ -30,6 +30,7 @@ dependencies = [
     "mcp>=1.2.0",
     "fastmcp>=0.2.0",
     "msal>=1.25.0",
+    "msal-extensions>=1.3,<2",
     "httpx>=0.25.0"
 ]
 
@@ -40,7 +41,10 @@ Issues = "https://github.com/purpleslurple/onenote-mcp-server/issues"
 Documentation = "https://github.com/purpleslurple/onenote-mcp-server#readme"
 
 [project.scripts]
-onenote-mcp-server = "onenote_mcp_server:main"
+onenote-mcp-server = "onenote_mcp.server:main"
 
-[tool.uv]
-dev-dependencies = []
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
+]
