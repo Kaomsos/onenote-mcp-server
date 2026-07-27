@@ -18,9 +18,26 @@
 ## 变更、测试与验收
 
 - 每项功能变更都要有 Mock 单元测试；真实账号验证须在用户明确确认后进行。
+- Claude CLI 全工具验收必须通过 `tests/test_agent_acceptance_live.py`；禁止临时拼接 Agent Prompt 绕过 pytest case。每个 Agent 子进程前必须完成本机配置、长期双开关、非 live Mock 测试、工具注册表、认证缓存、Graph 只读访问和阶段临时配置检查。
+- 同名资源检查、资源状态核验、Page 删除、Notebook 测试上下文清理和保护开关验证由本地 pytest 控制面直接执行，不得交给外部 Agent、被调用的 Agent 或其子进程决定和执行。
+- 生产 `SCOPES`、MCP Server、Claude/Codex 配置和 Agent 临时 MCP 配置严禁请求或注入 `Files.ReadWrite`；即使 Azure App Registration 已授予该权限，普通 MCP 进程也只能请求 OneNote 所需的 scope，且生产 Graph 客户端必须保持 `/me/onenote/` endpoint allowlist。不得新增 Drive MCP 工具、通用 Graph 工具或向 Agent 暴露 DriveItem 数据。
+- `Files.ReadWrite` 仅允许由 `tests/test_agent_acceptance_live.py` 的本地控制平面临时请求。经账号所有者明确授权，控制平面可复用生产 MCP 的平台加密 MSAL cache 和账号会话以减少重复认证；生产 MCP 自身仍只能请求生产 `SCOPES`，并受 `/me/onenote/` endpoint allowlist 限制。严禁把 cache、access token、DriveItem ID/eTag、搜索结果或删除响应发送给 Provider、Agent、被调用的 Agent、日志或测试报告；严禁使用 `Files.ReadWrite.All`。
+- 每次使用本地 Drive 清理都必须由账号所有者显式设置 `ONENOTE_LIVE_DRIVE_CLEANUP_APPROVED=1`。目标必须同时满足保留的 `MCP-FULL-TOOL-ACCEPTANCE-` 前缀、搜索精确名称、唯一非远程 `package.type=oneNote`，再按候选 ID 精确回读并复核名称、类型、ID 与 eTag，最后使用 `If-Match`；分页、重复、类型不符、OneNote/Drive 视图不一致或身份字段缺失时必须 fail closed，不得让 Agent 选择候选。
+- Drive 清理只用于 live test 启动前清除精确同名遗留上下文，以及结束后的同一测试 Notebook 回收；删除是移入 OneDrive 回收站而非永久擦除。失败时只报告脱敏错误码和人工清理所需的唯一测试名称，不得扩大搜索或删除范围。
+- 测试期结束后，可由账号所有者从 Azure App 移除或撤销 delegated `Files.ReadWrite`。因为 cache 与生产 MCP 共享，禁止由清理流程自动删除 cache；若要求立即清除全部本地认证状态，必须另行明确授权并接受 OneNote MCP 也需要重新认证。
+- 将 MCP 原始工具结果发送给外部 Provider、创建/更新隔离 Notebook、本地 Drive 清理和删除测试 Page 必须分别取得显式授权；Agent trace 只允许在进程内存中核验，不得持久化或原样输出。
 - 真实写入只允许针对唯一命名的测试 Notebook，记录的资源 ID 不得写入仓库或日志。测试完成后恢复写入开关为 `false`。
-- 创建 Notebook/Section 不能依赖 Graph 自动回滚；必须在文档中给出 OneNote/OneDrive 手动清理步骤。
+- 自动清理不属于 MCP 的产品能力；分发包和非 live 流程仍必须给出 OneNote/OneDrive 手动清理步骤。
 - 不使用 `git reset --hard` 或覆盖用户既有改动；小而可审查的提交优先。
+
+## 使用第三方 Agent 验收认证 MCP
+
+- 第三方 Agent 只承担 MCP 数据面动作；认证 bootstrap、scope 提升、目标选择、同名清理、最终状态核验和权限恢复属于本地 pytest 控制面。不得用长 Prompt 把完整控制权交给 Agent。
+- 相同 Client ID、配置文件和 token cache 不代表新增 scope 已可用。先分别验证生产 scope 与测试控制 scope；静默取 token 返回 `invalid_grant` 时，按 MSAL 规则执行一次本地交互认证，不得让 Agent 处理 Device Code 或看到认证材料。
+- live 流程必须拆为单一资源层级或单一 mutation 的短阶段；每个阶段使用独立、非持久 Agent 调用和最小工具白名单。阶段间需要等待最终一致性时，由本地代码执行有界只读回查，不让 Agent 盲目重试写入。
+- Claude `stream-json` 必须边读边保留在内存供最终覆盖验证；终端只允许实时显示阶段、已注册工具名和白名单内的固定结果码。Tool result、输入参数、资源 ID、HTML、stderr 和认证信息不得实时打印或持久化。
+- 成功不能只看 Agent 自述，必须从 trace 证明 required tool calls 全部发生，再由本地代码验证真实资源状态。失败使用 `PHASE_RESULT=<phase>:FAIL:<safe_code>`；未列入白名单的原因码不得原样输出。
+- 认证 MCP 的 Agent 验收设计与排障清单见 `docs/lessons/authenticated_mcp_agent_acceptance.md`；修改 harness 时必须同步其 Mock 测试、README 和 Agent Prompt。
 
 ## Git 远程与个人更新
 

@@ -19,7 +19,7 @@
 - 新增三个精确读取工具，并把 Page 元数据与现有 HTML 内容读取拆开，避免不必要的双请求。
 - Page 删除使用双开关：普通写入开关与独立删除开关必须同时开启。
 - 删除前回读 Page 标题并与调用者提供的 `expected_title` 完全匹配；不匹配时不得发送 DELETE。
-- Notebook 和 Section 继续人工删除；搜索、分页和 Section Group 留待独立设计。
+- Notebook 和 Section 不增加 MCP 删除工具；普通验收继续人工删除。只有开发仓库的 opt-in pytest 控制面可临时请求 `Files.ReadWrite` 并清理精确测试 Notebook；它可以按授权复用加密 cache，但不得向 Agent 暴露 Drive 能力。产品搜索、分页和 Section Group 留待独立设计。
 
 ## 预防措施
 

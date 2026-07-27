@@ -31,6 +31,8 @@ uv run pytest
 
 `Notes.ReadWrite` 是本服务读取和写入用户 OneNote 的最小实用权限。企业租户若阻止 Device Code Flow，应由管理员先处理条件访问策略。
 
+只有开发者要运行下述 pytest Notebook 上下文自动清理时，才在同一 App Registration 额外添加 Delegated `Files.ReadWrite`。生产 MCP 仍不会请求该 scope；禁止添加权限更大的 `Files.ReadWrite.All`，也不得把 Files 权限提供给 Agent。
+
 ## 启动与配置
 
 临时启动（默认不允许写入）：
@@ -119,9 +121,60 @@ ONENOTE_ENABLE_DELETES = "false"
 4. 用 list/read 工具回读三层对象和页面内容。
 5. 把 `ONENOTE_ENABLE_WRITES` 恢复为 `false`，随后在 OneNote/OneDrive 手动删除整个测试 Notebook。
 
-Notebook 和 Section 不支持由本服务自动回滚；测试失败后同样应在 OneNote/OneDrive 中手动清理新建的测试资源。
+Notebook 和 Section 不支持由 MCP 工具自动回滚；普通客户端和分发包验收仍应在 OneNote/OneDrive 中手动清理。下节开发仓库的 live test 另有一个严格隔离、不会暴露给 Agent 的本地控制面清理机制。
 
-开发仓库中的完整真实账号工具验收使用 [tests/prompts/onenote_full_tool_acceptance_zh.md](tests/prompts/onenote_full_tool_acceptance_zh.md)；运行源码 ZIP 按发布规则不携带 `tests/`，分发包用户使用包内 `docs/acceptance_guide_zh.md`。该 prompt 要求 Agent 创建唯一隔离 Notebook，覆盖当前全部 16 个工具，并在独立确认和双开关保护下选择是否删除测试 Page。当前版本不提供 Notebook/Section 删除工具，因此最终仍必须由账号所有者人工删除整个测试 Notebook，再由 Agent 只读回查。
+开发仓库中的真实账号工具验收规则记录在 [tests/prompts/onenote_full_tool_acceptance_zh.md](tests/prompts/onenote_full_tool_acceptance_zh.md)；运行源码 ZIP 按发布规则不携带 `tests/`，分发包用户使用包内 `docs/acceptance_guide_zh.md`。Agent 只处理唯一隔离 Notebook 内的非敏感数据面工具；同名清理、资源核验、可选 Page 删除和安全开关验证由本地 pytest 控制面执行。MCP 仍不暴露 Notebook/Section 删除工具。
+
+### Claude CLI 自动化全工具验收
+
+`tests/test_agent_acceptance_live.py` 是显式 opt-in 的 pytest live test，不再提供独立运行脚本。测试从被忽略且权限受限的 `.codex/config.toml` 内部取得 Application Client ID，为每个 Agent 阶段生成权限为 `0600` 的临时严格 MCP 配置，子进程退出后立即删除。
+
+测试控制面复用现有 OneNote MCP 的平台加密 MSAL cache 和账号会话，并在本地临时请求 `Files.ReadWrite`。先运行以下无 Agent test：若现有 refresh token 能静默取得新增 scope，它会直接通过；只有 Microsoft 要求交互确认时，才把登录地址和临时代码直接写入 TTY，不进入 pytest 捕获输出：
+
+```bash
+ONENOTE_LIVE_CONTROL_AUTH=1 \
+uv run pytest -q -m live \
+  tests/test_agent_acceptance_live.py::test_files_control_scope_authentication_live -s
+```
+
+运行 Agent CRUD 验收：
+
+```bash
+ONENOTE_RUN_LIVE_AGENT_ACCEPTANCE=1 \
+ONENOTE_PROVIDER_DATA_APPROVED=1 \
+ONENOTE_LIVE_WRITES_APPROVED=1 \
+ONENOTE_LIVE_DRIVE_CLEANUP_APPROVED=1 \
+uv run pytest -q -m live \
+  tests/test_agent_acceptance_live.py::test_claude_agent_onenote_tools_live -s
+```
+
+若另行授权 Page 删除，由本地 pytest 进程直接调用受双开关和标题确认保护的 `delete_page`，Page ID 和删除结果不会发送给 Claude Provider：
+
+```bash
+ONENOTE_RUN_LIVE_AGENT_ACCEPTANCE=1 \
+ONENOTE_PROVIDER_DATA_APPROVED=1 \
+ONENOTE_LIVE_WRITES_APPROVED=1 \
+ONENOTE_LIVE_DRIVE_CLEANUP_APPROVED=1 \
+ONENOTE_LIVE_PAGE_DELETE_APPROVED=1 \
+uv run pytest -q -m live \
+  tests/test_agent_acceptance_live.py::test_claude_agent_onenote_tools_live -s
+```
+
+每次 Agent 启动前，live test 都会检查锁文件、全部非 live Mock 测试、OneNote MCP 连接、16 工具注册表、删除 annotations、Claude/Codex 长期双开关、加密认证缓存、Graph 只读访问、临时配置权限和阶段工具白名单。数据面拆为 guard、Notebook、Section、Page、内容更新五个最小 Agent 阶段。runner 会实时读取 Claude `stream-json`，终端只显示阶段、OneNote 工具名和固定结果标记；完整 stdout/stderr 仍只保留在进程内存供最终覆盖验证，不打印 Tool result、ID、HTML 或认证信息。测试在 Agent 前后都由本地控制面清理精确同名 Notebook，不会把 Drive 权限、DriveItem 信息或清理决策交给 Provider。
+
+这套机制背后的通用经验，包括认证复用与增量 scope、控制面/数据面分离、Agent 可观测性、阶段拆分、最终一致性和安全失败协议，记录在 [认证 MCP 的第三方 Agent 验收经验](docs/lessons/authenticated_mcp_agent_acceptance.md)。
+
+OneNote Graph v1.0 只为普通 OneNote 内容提供受支持的 [Page 删除接口](https://learn.microsoft.com/en-us/graph/api/page-delete?view=graph-rest-1.0)，没有普通 Notebook/Section 删除接口。测试控制面利用 OneNote Notebook 在 OneDrive 中表现为 [`package.type=oneNote`](https://learn.microsoft.com/en-us/graph/api/resources/package?view=graph-rest-1.0) 的事实，并使用 OneDrive [`driveItem` 删除](https://learn.microsoft.com/en-us/graph/api/driveitem-delete?view=graph-rest-1.0)。它先按保留前缀和精确名称取得唯一非远程 package，再按 ID 精确回读并复核名称、类型、ID 和 eTag，最后携带 `If-Match` 移入回收站；分页、重复、类型不符、视图不一致或身份不完整都会 fail closed。
+
+`Files.ReadWrite` 不在生产 `SCOPES` 中，只由 live-control AuthManager 临时请求；它与生产 MCP 复用平台加密 cache，但 Claude MCP、Codex MCP 和 Agent 临时配置本身都不会请求 Files scope。生产 Graph 客户端还强制执行 `/me/onenote/` endpoint allowlist，Agent 不获得 Drive 工具或通用 Graph 入口。每次清理必须单独设置 `ONENOTE_LIVE_DRIVE_CLEANUP_APPROVED=1`。只有清理失败时才需要人工处理，并可用纯本地 test 回查：
+
+```bash
+ONENOTE_VERIFY_CLEANUP_NAME="MCP-FULL-TOOL-ACCEPTANCE-..." \
+uv run pytest -q -m live \
+  tests/test_agent_acceptance_live.py::test_manual_notebook_cleanup_verified_live -s
+```
+
+测试期结束后，可在 Azure App Registration 中移除或撤销不再需要的 delegated `Files.ReadWrite`。不要由验收代码自动删除共享 cache；如果需要立即清除全部本地认证状态，必须另行授权，并在清除后重新完成普通 OneNote MCP 认证。
 
 ## 工具接口
 

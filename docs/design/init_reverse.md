@@ -28,5 +28,5 @@
 ## 约束与后续方向
 
 - 目标为全球 Microsoft Graph；世纪互联云不在本阶段范围内。
-- Graph 支持删除 Page，但本服务不将 Notebook/Section 自动删除作为回滚机制。验收必须建立一次性测试 Notebook，并由用户在 OneNote/OneDrive 手动清理。
+- Graph 支持删除 Page，但本服务不提供 Notebook/Section 删除工具。普通客户端和分发包验收由用户在 OneNote/OneDrive 手动清理；开发仓库的 opt-in live test 可在 Agent 外使用独立 `Files.ReadWrite` 加密会话，按精确名称、唯一 OneNote package 和 eTag 约束清理测试上下文。该能力不得进入生产 MCP scope 或暴露给 Agent。
 - 后续可评估分页、Section Group、受控的 Page 删除与 MCP Bundle 分发，但不能降低默认写入保护。

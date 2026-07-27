@@ -2,6 +2,16 @@
 
 本项目遵循语义化版本。发布日期以实际提交或发布记录为准。
 
+## Unreleased
+
+- 新增显式 opt-in 的 Claude CLI pytest live case，在每次 Agent 调用前执行本机配置、长期安全开关、非 live Mock 测试、工具注册表、认证缓存和 Graph 只读前置检查。
+- 真实工具验收改用权限为 `0600` 的临时严格 MCP 配置、逐阶段最小工具白名单和非持久 Claude 会话；原始 trace 仅用于内存中的实际工具覆盖验证。
+- Agent 数据面拆分为 guard、Notebook、Section、Page 和内容更新五次独立调用；runner 并发读取 Claude `stream-json` 并实时显示脱敏的阶段、工具名和固定结果，同时保留完整内存 trace 供最终一次性验证。
+- 同名 Notebook 检查、创建结果核验、可选 Page 删除、Notebook 测试上下文清理和保护开关验证改由本地测试代码执行，不向 Provider 发送敏感控制面数据。
+- 为 live test 增加仅由本地控制面请求的 `Files.ReadWrite` 认证；经账号所有者授权复用生产 MCP 的平台加密 cache，生产 MCP scope、Claude/Codex 配置及 Agent 临时配置保持不含 Files 权限，也不暴露 Drive 或通用 Graph 工具。
+- Notebook 上下文清理要求独立显式授权，仅接受保留前缀下精确命名、唯一、非远程的 OneNote DriveItem package；搜索命中后再按 ID 精确回读名称、类型和 eTag，并以 `If-Match` fail closed 地移入回收站，异常时保留人工清理与无 Agent 回查流程。
+- Provider 数据传输、隔离 Notebook 写入、本地 Drive 清理和本地 Page 删除分别要求显式环境授权。
+
 ## 2.1.0
 
 ### 变更
