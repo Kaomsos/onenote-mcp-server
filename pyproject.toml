@@ -5,8 +5,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "onenote-mcp-server"
-version = "1.0.0"
-description = "Complete OneNote MCP Server for Claude Desktop - Access your entire OneNote knowledge base through AI"
+version = "2.1.0"
+description = "Secure local MCP server for Microsoft OneNote"
 authors = [
     {name = "Matthew Schneider", email = "matsch@sasites.com"}
 ]
@@ -35,10 +35,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/purpleslurple/onenote-mcp-server"
-Repository = "https://github.com/purpleslurple/onenote-mcp-server"
-Issues = "https://github.com/purpleslurple/onenote-mcp-server/issues"
-Documentation = "https://github.com/purpleslurple/onenote-mcp-server#readme"
+Homepage = "https://github.com/Kaomsos/onenote-mcp-server"
+Repository = "https://github.com/Kaomsos/onenote-mcp-server"
+Issues = "https://github.com/Kaomsos/onenote-mcp-server/issues"
+Documentation = "https://github.com/Kaomsos/onenote-mcp-server#readme"
 
 [project.scripts]
 onenote-mcp-server = "onenote_mcp.server:main"

@@ -18,7 +18,7 @@ MCP-ACCEPTANCE-YYYYMMDD-HHMMSS
 4. 开关开启后，能依次创建 Notebook、Section、Page，并通过读取工具回读。
 5. 验收结束后关闭写入开关，并由账号所有者在 OneNote/OneDrive 删除测试 Notebook。
 
-禁止事项：不在配置、日志、截图、Issue 或 Git 提交中保存 device code、token、邮箱、Client ID 或资源 ID；不对已有重要 Notebook 执行创建、更新或测试操作。
+禁止事项：不在可提交配置、示例、日志、截图、Issue 或 Git 提交中保存 device code、token、邮箱、实际 Client ID 或资源 ID；实际 Client ID 只允许保存在被忽略的本机配置或客户端私有 scope 中。不对已有重要 Notebook 执行创建、更新或测试操作。
 
 ## 1. 本地环境准备
 
@@ -46,6 +46,8 @@ uv run pytest -q
 - `.env`、`.env.local`、`*.token`、`*.key`。
 - Claude Desktop、Cursor 或本地 Agent 的个人配置文件。
 - 平台加密 token cache 文件。
+
+Application Client ID 是 Public Client 的公开标识，不按 Client Secret 管理，但包含实际值的配置仍必须使用客户端私有 scope 或 Git 忽略规则。Claude Code 应使用 `local` scope；Codex 应使用被忽略的 `.codex/config.toml`。
 
 确认 `.gitignore` 包含 `azure-onenote-mcp-server/`，该参考项目只用于逻辑比对。
 
@@ -98,7 +100,8 @@ uv run pytest -q
       "env": {
         "AZURE_CLIENT_ID": "your-public-client-id",
         "ONENOTE_CACHE_TOKENS": "true",
-        "ONENOTE_ENABLE_WRITES": "false"
+        "ONENOTE_ENABLE_WRITES": "false",
+        "ONENOTE_ENABLE_DELETES": "false"
       }
     }
   }
@@ -108,6 +111,8 @@ uv run pytest -q
 ### 3.1 Claude Desktop
 
 将 `onenote` 服务对象合并到 Claude Desktop 的本地 MCP 配置 `mcpServers` 中，保存后完全退出并重启 Claude Desktop。在连接器/开发者设置中确认 OneNote MCP Server 已连接并展示工具列表。
+
+Claude Code 使用 `.claude/mcp.example.json` 作为脱敏参考，并通过 `claude mcp add-json --scope local` 保存当前用户、当前项目专属的实际配置。不要把实际值放入根目录 `.mcp.json`；该文件属于可共享的 `project` scope。
 
 ### 3.2 Cursor
 
@@ -119,7 +124,7 @@ uv run pytest -q
 
 ## 4. 只读预检（无需写入确认）
 
-保持 `ONENOTE_ENABLE_WRITES=false`，依次调用：
+保持 `ONENOTE_ENABLE_WRITES=false` 和 `ONENOTE_ENABLE_DELETES=false`，依次调用：
 
 1. `check_authentication`：预期返回 `not_authenticated`（首次）或 `authenticated`（已有加密缓存）。
 2. `start_authentication`：仅在当前 MCP 对话中查看 `verification_uri` 和 `user_code`，不要复制到日志或文档。
@@ -174,6 +179,7 @@ create_notebook("MCP-ACCEPTANCE-20260720-153000")
 - 返回 `status: success`。
 - 返回的 `notebook.id` 和 `notebook.name` 均非空。
 - 调用 `list_notebooks` 后能找到同名测试 Notebook。
+- 调用 `get_notebook("<notebook.id>")` 后名称和元数据一致。
 
 只在当前会话中使用返回的 Notebook ID；不要将它粘贴到仓库文件。
 
@@ -188,6 +194,7 @@ create_section("<上一步的 notebook.id>", "MCP Acceptance Section")
 - 返回 `status: success`。
 - 返回的 `section.id` 和 `section.name` 均非空。
 - 调用 `list_sections("<notebook.id>")` 后能找到该 Section。
+- 调用 `get_section("<section.id>")` 后名称和元数据一致。
 
 ### 5.3 创建并验证 Page
 
@@ -203,23 +210,48 @@ create_page(
 
 - 返回 `status: success`。
 - 调用 `list_pages("<section.id>")` 后能找到该 Page。
+- 调用 `get_page_metadata("<page.id>")` 后标题和元数据一致。
 - 调用 `get_page_content("<page.id>")`，返回 HTML 包含 `OneNote MCP acceptance marker.`。
 - 在 OneNote 网页端或客户端中确认层级为：测试 Notebook → 测试 Section → 测试 Page。
 
-### 5.4 异常处理
+### 5.4 可选 Page 删除验收
+
+Page 删除需要第二次明确确认。获得确认后，保持写入开启，并将：
+
+```json
+"ONENOTE_ENABLE_DELETES": "false"
+```
+
+临时改为：
+
+```json
+"ONENOTE_ENABLE_DELETES": "true"
+```
+
+重启 MCP 客户端后先调用 `get_page_metadata("<page.id>")`，确认标题仍为 `MCP Acceptance Page`，再调用：
+
+```text
+delete_page("<page.id>", "MCP Acceptance Page")
+```
+
+预期返回 `status: success`，随后 `list_pages("<section.id>")` 不再包含该 Page。若返回 `confirmation_mismatch`，立即停止，不得猜测标题或绕过确认。无论成功、失败或跳过，随后都必须把删除开关恢复为 `false`。
+
+### 5.5 异常处理
 
 - `conflict`：名称已存在。不要改动已有资源；使用新的时间戳重新开始。
 - `rate_limited`：停止请求，等待 Microsoft Graph 要求的时间后从“列出并确认状态”开始；不要盲目重发创建请求。
 - 超时或网络错误：结果可能不确定。先通过 `list_notebooks`、`list_sections`、`list_pages` 确认是否已经创建，再决定是否使用新名称重试。
 - `forbidden`：停止操作，检查是否为 Delegated `Notes.ReadWrite`、是否使用了正确账号，以及租户管理员策略。
+- `deletes_disabled`：停止删除，确认独立删除开关与客户端重启状态。
+- `confirmation_mismatch`：停止删除，重新进行只读元数据核对；不得尝试其他删除方式。
 
 ## 6. 回滚、清理与验收记录
 
-1. 将客户端配置立即恢复为 `ONENOTE_ENABLE_WRITES=false` 并重启客户端。
+1. 将客户端配置立即恢复为 `ONENOTE_ENABLE_WRITES=false`、`ONENOTE_ENABLE_DELETES=false` 并重启客户端。
 2. 在 OneNote/OneDrive 中手动删除本流程创建的整个 `MCP-ACCEPTANCE-...` Notebook；Notebook 和 Section 不使用 MCP 自动删除。
 3. 在 OneNote/OneDrive 回收站中确认清理策略符合账号所有者要求。
 4. 调用 `list_notebooks`，确认测试 Notebook 不再出现在列表中。
-5. 验收记录只保留无敏感信息的结果：日期、操作者角色、客户端、通过/失败状态、错误码与是否完成手动清理。不得保存 user code、token、Client ID、邮箱或资源 ID。
+5. 验收记录只保留无敏感信息的结果：日期、操作者角色、客户端、通过/失败状态、错误码与是否完成手动清理。不得保存 user code、token、实际 Client ID、邮箱或资源 ID。
 
 建议使用以下脱敏记录模板：
 
@@ -231,6 +263,7 @@ create_page(
 Notebook 创建：通过 / 未通过
 Section 创建：通过 / 未通过
 Page 创建与回读：通过 / 未通过
+Page 删除：通过 / 未通过 / 已跳过
 人工清理：已完成 / 待完成
 备注：仅记录错误码和处理动作
 ```
