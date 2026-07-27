@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import msal
@@ -29,8 +30,9 @@ class AuthenticationError(RuntimeError):
 class AuthManager:
     """Owns the public-client application and never exposes access tokens."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, *, scopes: Sequence[str] | None = None) -> None:
         self._settings = settings
+        self._scopes = tuple(scopes or SCOPES)
         self._cache: msal.SerializableTokenCache | PersistedTokenCache | None = None
         self._app: msal.PublicClientApplication | None = None
         self._flow: dict[str, Any] | None = None
@@ -41,6 +43,12 @@ class AuthManager:
         if not self._settings.cache_tokens:
             return "disabled"
         return "encrypted" if self._persistent_cache_available else "session_only"
+
+    @property
+    def requested_scopes(self) -> tuple[str, ...]:
+        """Return the exact delegated scopes requested by this manager."""
+
+        return self._scopes
 
     def _get_app(self) -> msal.PublicClientApplication:
         if not self._settings.client_id:
@@ -68,7 +76,7 @@ class AuthManager:
             return msal.SerializableTokenCache()
 
     def start_device_flow(self) -> dict[str, Any]:
-        flow = self._get_app().initiate_device_flow(scopes=SCOPES)
+        flow = self._get_app().initiate_device_flow(scopes=list(self._scopes))
         if "user_code" not in flow or "verification_uri" not in flow:
             raise AuthenticationError("Unable to initiate Device Code Flow")
         self._flow = flow
@@ -95,7 +103,7 @@ class AuthManager:
         accounts = app.get_accounts()
         if not accounts:
             raise AuthenticationRequired("No cached session. Call start_authentication first.")
-        result = app.acquire_token_silent(SCOPES, account=accounts[0])
+        result = app.acquire_token_silent(list(self._scopes), account=accounts[0])
         token = result.get("access_token") if result else None
         if not token:
             raise AuthenticationRequired("Authentication has expired. Call start_authentication again.")

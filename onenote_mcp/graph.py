@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -35,11 +37,23 @@ class GraphRequestError(RuntimeError):
         return "graph_request_failed"
 
 
+class GraphEndpointNotAllowed(RuntimeError):
+    """Raised before authentication when a client crosses its API boundary."""
+
+
 class GraphClient:
-    def __init__(self, settings: Settings, auth: AuthManager, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        auth: AuthManager,
+        transport: httpx.AsyncBaseTransport | None = None,
+        *,
+        allowed_endpoint_prefixes: Sequence[str] = ("/me/onenote/",),
+    ) -> None:
         self._settings = settings
         self._auth = auth
         self._transport = transport
+        self._allowed_endpoint_prefixes = tuple(allowed_endpoint_prefixes)
 
     async def request_json(
         self,
@@ -49,8 +63,16 @@ class GraphClient:
         json_body: Any | None = None,
         content: str | None = None,
         content_type: str = "application/json",
+        if_match: str | None = None,
     ) -> dict[str, Any]:
-        response = await self._request(method, endpoint, json_body=json_body, content=content, content_type=content_type)
+        response = await self._request(
+            method,
+            endpoint,
+            json_body=json_body,
+            content=content,
+            content_type=content_type,
+            if_match=if_match,
+        )
         return response.json() if response.content else {}
 
     async def request_text(self, method: str, endpoint: str) -> str:
@@ -65,9 +87,19 @@ class GraphClient:
         json_body: Any | None = None,
         content: str | None = None,
         content_type: str,
+        if_match: str | None = None,
     ) -> httpx.Response:
+        path = urlsplit(endpoint).path
+        if (
+            not path.startswith("/")
+            or ".." in path.split("/")
+            or not any(path.startswith(prefix) for prefix in self._allowed_endpoint_prefixes)
+        ):
+            raise GraphEndpointNotAllowed("graph_endpoint_not_allowed")
         token = self._auth.get_access_token()
         headers = {"Authorization": f"Bearer {token}", "Content-Type": content_type}
+        if if_match is not None:
+            headers["If-Match"] = if_match
         try:
             async with httpx.AsyncClient(transport=self._transport, timeout=15.0) as client:
                 response = await client.request(

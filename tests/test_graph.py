@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from onenote_mcp.config import Settings
-from onenote_mcp.graph import GraphClient, GraphRequestError
+from onenote_mcp.graph import GraphClient, GraphEndpointNotAllowed, GraphRequestError
 from onenote_mcp.tools import OneNoteTools
 
 
@@ -72,6 +72,35 @@ async def test_empty_delete_response_is_supported():
     )
 
     assert await graph.request_json("DELETE", "/me/onenote/pages/page-id") == {}
+
+
+@pytest.mark.asyncio
+async def test_delete_can_use_if_match_without_exposing_it_to_tools():
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        assert request.headers["If-Match"] == "test-etag"
+        return httpx.Response(204)
+
+    graph = GraphClient(  # type: ignore[arg-type]
+        settings(),
+        StubAuth(),
+        httpx.MockTransport(handler),
+        allowed_endpoint_prefixes=("/me/drive/",),
+    )
+
+    assert await graph.request_json("DELETE", "/me/drive/items/item-id", if_match="test-etag") == {}
+
+
+@pytest.mark.asyncio
+async def test_production_graph_client_rejects_drive_before_requesting_a_token():
+    class GuardAuth:
+        def get_access_token(self) -> str:
+            pytest.fail("Authentication must not run for a disallowed endpoint")
+
+    graph = GraphClient(settings(), GuardAuth())  # type: ignore[arg-type]
+
+    with pytest.raises(GraphEndpointNotAllowed, match="^graph_endpoint_not_allowed$"):
+        await graph.request_json("GET", "/me/drive/root")
 
 
 @pytest.mark.asyncio
