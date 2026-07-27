@@ -41,13 +41,15 @@
 
 ## Git 远程与个人更新
 
-- `origin` 保持指向上游 `https://github.com/purpleslurple/onenote-mcp-server`，用于查看和同步原项目更新。
-- `fork` 指向个人代码仓库 `https://github.com/Kaomsos/onenote-mcp-server.git`，是本项目变更的推送目标。
-- 更新个人代码前先检查工作树、运行相关测试并创建本地提交；使用 `git push fork main:main` 推送。不得向上游 `origin` 直接推送。
+- 本地仓库只保留一个 remote：`origin`，仓库身份固定为 GitHub 上的 `Kaomsos/onenote-mcp-server`，同时用于 fetch 和 push。传输方式服从当前机器的凭据配置，可使用 HTTPS 或 SSH，不得把 URL 写死为某一种协议。
+- 不添加、恢复或引用原始项目的上游 remote，不维护 `fork` remote，也不设计双远程同步流程。需要研究外部实现时使用浏览器或被 `.gitignore` 忽略的参考目录，不改变主仓库 remote。
+- 更新个人代码前先检查工作树、运行相关测试并创建本地提交；使用 `git push origin main:main` 推送。
+- Agent 操作 Git 前必须先运行 `git remote -v`；如果存在 `origin` 之外的 remote，或将 HTTPS/SSH URL 规范化后 `origin` 不指向上述个人仓库，应停止推送并先按本节恢复单一 origin。不得仅因另一台机器使用不同协议而改写其有效 remote。
 
 ## 自我迭代与参考项目
 
 - 每解决一个 non-trivial 问题，在 `docs/lessons/` 按主题记录问题、根因、方案与预防措施；必要时同步本文件。
+- Git 单一远程的原因和维护规则记录在 `docs/lessons/single_origin_remote.md`。
 - 参考对标项目固定为 [ZubeidHendricks/azure-onenote-mcp-server](https://github.com/ZubeidHendricks/azure-onenote-mcp-server)。它用于逆向分析创建 Notebook、Section 等 Graph 调用；其 Client Secret 认证方式不得迁入主项目。
 - 初始化或更新参考目录时，在主项目根目录执行：`git clone https://github.com/ZubeidHendricks/azure-onenote-mcp-server.git`。若目录已存在，使用该目录自身的 Git 状态与提交记录进行分析，不重复 clone 或覆盖其中内容。
 - clone 目标必须是主项目根目录下的 `azure-onenote-mcp-server/`，并由 `.gitignore` 忽略。可在设计文档记录参考 commit 与 API 行为，但不得复制、导入、暂存或提交其代码。

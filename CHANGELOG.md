@@ -11,6 +11,7 @@
 - 为 live test 增加仅由本地控制面请求的 `Files.ReadWrite` 认证；经账号所有者授权复用生产 MCP 的平台加密 cache，生产 MCP scope、Claude/Codex 配置及 Agent 临时配置保持不含 Files 权限，也不暴露 Drive 或通用 Graph 工具。
 - Notebook 上下文清理要求独立显式授权，仅接受保留前缀下精确命名、唯一、非远程的 OneNote DriveItem package；搜索命中后再按 ID 精确回读名称、类型和 eTag，并以 `If-Match` fail closed 地移入回收站，异常时保留人工清理与无 Agent 回查流程。
 - Provider 数据传输、隔离 Notebook 写入、本地 Drive 清理和本地 Page 删除分别要求显式环境授权。
+- Git 工作流简化为个人仓库单一 `origin`；移除原始项目上游与额外 `fork` remote 的维护约定。
 
 ## 2.1.0
 

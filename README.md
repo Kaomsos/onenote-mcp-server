@@ -16,11 +16,13 @@
 需要 Python 3.10+、[uv](https://docs.astral.sh/uv/) 和一个全球 Azure / Microsoft 账户。
 
 ```powershell
-git clone <your-fork-or-working-copy>
+git clone <personal-repository-url>
 cd onenote-mcp-server
 uv sync --all-groups
 uv run pytest
 ```
+
+`<personal-repository-url>` 使用当前机器已配置的 HTTPS 或 SSH 地址。本项目把 `Kaomsos/onenote-mcp-server` 个人仓库作为唯一 `origin`，不配置原始项目上游或额外 `fork` remote。提交并验证后使用 `git push origin main:main` 更新远程。
 
 在 Microsoft Entra App Registration 中创建或使用一个 **Public client** 应用：
 
