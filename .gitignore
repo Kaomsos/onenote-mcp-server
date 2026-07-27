@@ -29,6 +29,9 @@ Thumbs.db
 
 # Auth tokens and sensitive files
 .mcp-onenote-cache.json
+.mcp.json
+.codex/config.toml
+.claude/*.local.json
 azure-onenote-mcp-server/
 *.token
 *.key
@@ -43,6 +46,7 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+dist/
 
 # Temporary files
 tmp/

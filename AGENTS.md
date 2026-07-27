@@ -8,9 +8,11 @@
 
 ## 认证与安全
 
-- 只使用 Public Client + Device Code Flow。禁止读取、要求、保存或记录 `AZURE_CLIENT_SECRET`、token、refresh token、邮箱或 Client ID。
+- 只使用 Public Client + Device Code Flow。Application Client ID 是公开配置标识，可保存在被 Git 忽略的本机实际配置（如 `.codex/config.toml` 或 Claude Code `local` scope）中，但不得出现在示例、提交、截图、Issue、日志或 Agent 输出中。
+- 禁止读取、要求、保存或记录 `AZURE_CLIENT_SECRET`、token、refresh token 或邮箱；自动迁移 Client ID 时只能在本机配置之间传递并全程避免打印其值。
 - 持久化令牌必须通过 `msal-extensions` 平台加密缓存；无法加密时仅允许会话内缓存，禁止明文降级。
 - 写入工具默认关闭，只有 `ONENOTE_ENABLE_WRITES=true` 才可调用 Graph 写端点。
+- 删除工具必须额外要求 `ONENOTE_ENABLE_DELETES=true`，并在删除前校验调用者提供的资源确认信息；普通写入开关不得隐式授权删除。
 - 日志与 MCP 错误不得包含 Graph 原始响应体、认证材料或账号资料。
 
 ## 变更、测试与验收

@@ -1,0 +1,19 @@
+[mcp_servers.onenote]
+command = "/absolute/path/to/uv"
+args = [
+  "--directory",
+  "/absolute/path/to/onenote-mcp-server",
+  "run",
+  "--frozen",
+  "onenote-mcp-server",
+]
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+enabled = true
+required = false
+
+[mcp_servers.onenote.env]
+AZURE_CLIENT_ID = "YOUR_AZURE_CLIENT_ID_HERE"
+ONENOTE_CACHE_TOKENS = "true"
+ONENOTE_ENABLE_WRITES = "false"
+ONENOTE_ENABLE_DELETES = "false"
