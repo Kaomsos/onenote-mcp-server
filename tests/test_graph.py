@@ -64,6 +64,17 @@ async def test_empty_patch_response_is_supported():
 
 
 @pytest.mark.asyncio
+async def test_empty_delete_response_is_supported():
+    graph = GraphClient(
+        settings(),
+        StubAuth(),  # type: ignore[arg-type]
+        httpx.MockTransport(lambda request: httpx.Response(204)),
+    )
+
+    assert await graph.request_json("DELETE", "/me/onenote/pages/page-id") == {}
+
+
+@pytest.mark.asyncio
 async def test_graph_client_maps_network_error_without_details():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("private endpoint failure", request=request)

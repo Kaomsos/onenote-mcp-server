@@ -25,6 +25,14 @@ class WriteDisabledError(PermissionError):
     """Raised when a mutation tool is not explicitly enabled."""
 
 
+class DeleteDisabledError(PermissionError):
+    """Raised when destructive tools are not separately enabled."""
+
+
+class ConfirmationMismatchError(ValueError):
+    """Raised when destructive confirmation does not match current metadata."""
+
+
 def _validated_name(name: str, *, kind: str) -> str:
     normalized = name.strip() if isinstance(name, str) else ""
     if not normalized:
@@ -49,6 +57,10 @@ def _error_result(error: Exception) -> str:
         result: dict[str, Any] = {"status": "error", "code": "invalid_input", "message": str(error)}
     elif isinstance(error, WriteDisabledError):
         result = {"status": "error", "code": "writes_disabled", "message": "Set ONENOTE_ENABLE_WRITES=true to enable write tools."}
+    elif isinstance(error, DeleteDisabledError):
+        result = {"status": "error", "code": "deletes_disabled", "message": "Set ONENOTE_ENABLE_DELETES=true to enable delete tools."}
+    elif isinstance(error, ConfirmationMismatchError):
+        result = {"status": "error", "code": "confirmation_mismatch", "message": "Page title did not match delete confirmation."}
     elif isinstance(error, AuthenticationRequired):
         result = {"status": "error", "code": "authentication_required", "message": "Call start_authentication first."}
     elif isinstance(error, AuthenticationError):
@@ -74,6 +86,11 @@ class OneNoteTools:
         if not self._settings.writes_enabled:
             raise WriteDisabledError
 
+    def _require_deletes(self) -> None:
+        self._require_writes()
+        if not self._settings.deletes_enabled:
+            raise DeleteDisabledError
+
     async def list_notebooks(self) -> str:
         try:
             notebooks = await self._graph.request_json("GET", "/me/onenote/notebooks")
@@ -87,6 +104,23 @@ class OneNoteTools:
                 for item in notebooks.get("value", [])
             ]
             return json.dumps(result, indent=2)
+        except Exception as error:
+            return _error_result(error)
+
+    async def get_notebook(self, notebook_id: str) -> str:
+        try:
+            notebook = _resource_id(notebook_id, kind="notebook")
+            item = await self._graph.request_json("GET", f"/me/onenote/notebooks/{notebook}")
+            return json.dumps(
+                {
+                    "id": item.get("id"),
+                    "name": item.get("displayName"),
+                    "created": item.get("createdDateTime"),
+                    "modified": item.get("lastModifiedDateTime"),
+                    "sections_url": item.get("sectionsUrl"),
+                },
+                indent=2,
+            )
         except Exception as error:
             return _error_result(error)
 
@@ -104,6 +138,23 @@ class OneNoteTools:
                 for item in sections.get("value", [])
             ]
             return json.dumps(result, indent=2)
+        except Exception as error:
+            return _error_result(error)
+
+    async def get_section(self, section_id: str) -> str:
+        try:
+            section = _resource_id(section_id, kind="section")
+            item = await self._graph.request_json("GET", f"/me/onenote/sections/{section}")
+            return json.dumps(
+                {
+                    "id": item.get("id"),
+                    "name": item.get("displayName"),
+                    "created": item.get("createdDateTime"),
+                    "modified": item.get("lastModifiedDateTime"),
+                    "pages_url": item.get("pagesUrl"),
+                },
+                indent=2,
+            )
         except Exception as error:
             return _error_result(error)
 
@@ -129,6 +180,23 @@ class OneNoteTools:
         try:
             page = _resource_id(page_id, kind="page")
             return await self._graph.request_text("GET", f"/me/onenote/pages/{page}/content")
+        except Exception as error:
+            return _error_result(error)
+
+    async def get_page_metadata(self, page_id: str) -> str:
+        try:
+            page = _resource_id(page_id, kind="page")
+            item = await self._graph.request_json("GET", f"/me/onenote/pages/{page}")
+            return json.dumps(
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "created": item.get("createdDateTime"),
+                    "modified": item.get("lastModifiedDateTime"),
+                    "content_url": item.get("contentUrl"),
+                },
+                indent=2,
+            )
         except Exception as error:
             return _error_result(error)
 
@@ -227,6 +295,20 @@ class OneNoteTools:
         except Exception as error:
             return _error_result(error)
 
+    async def delete_page(self, page_id: str, expected_title: str) -> str:
+        try:
+            self._require_deletes()
+            page = _resource_id(page_id, kind="page")
+            if not isinstance(expected_title, str) or not expected_title.strip():
+                raise InputValidationError("expected page title must not be empty")
+            metadata = await self._graph.request_json("GET", f"/me/onenote/pages/{page}")
+            if metadata.get("title") != expected_title:
+                raise ConfirmationMismatchError
+            await self._graph.request_json("DELETE", f"/me/onenote/pages/{page}")
+            return json.dumps({"status": "success", "message": "Page deleted successfully."}, indent=2)
+        except Exception as error:
+            return _error_result(error)
+
 
 def register_tools(mcp: FastMCP, service: OneNoteTools, auth: AuthManager) -> None:
     """Register stable MCP tool names against the service implementation."""
@@ -262,10 +344,21 @@ def register_tools(mcp: FastMCP, service: OneNoteTools, auth: AuthManager) -> No
             return _error_result(error)
 
     mcp.tool()(service.list_notebooks)
+    mcp.tool()(service.get_notebook)
     mcp.tool()(service.list_sections)
+    mcp.tool()(service.get_section)
     mcp.tool()(service.list_pages)
+    mcp.tool()(service.get_page_metadata)
     mcp.tool()(service.get_page_content)
     mcp.tool()(service.create_notebook)
     mcp.tool()(service.create_section)
     mcp.tool()(service.create_page)
     mcp.tool()(service.update_page_content)
+    mcp.tool(
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+    )(service.delete_page)

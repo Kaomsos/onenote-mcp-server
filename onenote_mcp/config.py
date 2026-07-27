@@ -21,6 +21,7 @@ class Settings:
     cache_tokens: bool
     writes_enabled: bool
     cache_path: Path
+    deletes_enabled: bool = False
     authority: str = "https://login.microsoftonline.com/common"
     graph_base_url: str = "https://graph.microsoft.com/v1.0"
 
@@ -33,4 +34,5 @@ class Settings:
             cache_tokens=_as_bool(os.getenv("ONENOTE_CACHE_TOKENS", "true"), True),
             writes_enabled=_as_bool(os.getenv("ONENOTE_ENABLE_WRITES", "false"), False),
             cache_path=cache_root / "onenote-mcp-server" / "msal_token_cache.bin",
+            deletes_enabled=_as_bool(os.getenv("ONENOTE_ENABLE_DELETES", "false"), False),
         )
