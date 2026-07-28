@@ -1,4 +1,5 @@
 import hashlib
+import os
 import zipfile
 from pathlib import Path
 
@@ -30,7 +31,8 @@ def test_release_archive_has_expected_runtime_files_and_checksum(tmp_path):
     assert result.checksum_file.read_text(encoding="utf-8") == (
         f"{result.sha256}  {result.archive.name}\n"
     )
-    assert result.archive.stat().st_mode & 0o777 == 0o644
+    if os.name != "nt":
+        assert result.archive.stat().st_mode & 0o777 == 0o644
 
     prefix = "onenote-mcp-server-2.1.0/"
     expected = {f"{prefix}{path.as_posix()}" for path in RUNTIME_FILES}
