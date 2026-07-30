@@ -39,6 +39,13 @@ def test_release_archive_has_expected_runtime_files_and_checksum(tmp_path):
     expected.add(f"{prefix}VERSION")
     with zipfile.ZipFile(result.archive) as archive:
         assert set(archive.namelist()) == expected
+        assert {
+            f"{prefix}docs/todos/README.md",
+            f"{prefix}docs/todos/page_hierarchy_support.md",
+            f"{prefix}docs/todos/page_section_copy_move.md",
+            f"{prefix}docs/todos/reference_project_feature_parity.md",
+            f"{prefix}docs/todos/three_level_crud_gap.md",
+        } <= set(archive.namelist())
         assert archive.read(f"{prefix}VERSION") == b"2.1.0\n"
         assert all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in archive.infolist())
 

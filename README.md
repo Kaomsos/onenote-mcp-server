@@ -2,6 +2,8 @@
 
 一个采用 Microsoft Device Code Flow 的本地 FastMCP 服务，用于读取和管理当前用户的 OneNote。创建与更新操作默认关闭，避免 Agent 意外改动笔记。
 
+开发中的探索事项统一登记在 [`docs/todos/`](docs/todos/README.md)。Agent 和维护者开始 non-trivial 工作前应先检查索引；阶段完成时更新脱敏进展，整个事项完成后将长期结论迁入正式文档或测试并删除对应 TODO。
+
 ## 安全模型
 
 - 仅需要 `AZURE_CLIENT_ID`；绝不配置 Client Secret。
@@ -201,7 +203,7 @@ uv run python scripts/build_release.py
 - `onenote-mcp-server-2.1.0.zip`
 - `onenote-mcp-server-2.1.0.zip.sha256`
 
-脚本从 `pyproject.toml` 读取版本，使用显式允许列表、固定时间戳和固定权限生成可复现 ZIP。包内只包含运行代码、锁文件、许可证、用户文档和脱敏客户端配置示例，不包含测试、开发缓存、实际 MCP 配置或认证材料。
+脚本从 `pyproject.toml` 读取版本，使用显式允许列表、固定时间戳和固定权限生成可复现 ZIP。包内只包含运行代码、锁文件、许可证、用户文档、活动探索 TODO 和脱敏客户端配置示例，不包含测试、开发缓存、实际 MCP 配置或认证材料。
 
 ## 使用分发包
 

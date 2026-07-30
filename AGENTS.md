@@ -6,6 +6,13 @@
 - Graph API 调用必须通过统一客户端，禁止在工具函数中直接拼接 Bearer token 或泄露响应正文。
 - 保持 MCP 工具名稳定；接口破坏性变更必须在 README 和设计文档中说明。
 
+## TODO 管理
+
+- 开始 non-trivial 开发或探索前，先检查 `docs/todos/README.md` 及与任务相关的活动 TODO；新发现的独立待办按一个主题一个文件记录在 `docs/todos/`，并同步索引。
+- 每完成一个可验证阶段，就在对应 TODO 的“阶段进展”中追加日期、脱敏证据、结论和下一步；不得记录账号资料、认证材料、OneNote 资源 ID、原始响应或 Agent trace。
+- 整个 TODO 完成后，把仍有长期价值的结论迁入 `docs/design/`、`docs/lessons/`、README 或测试，再删除 TODO 文件及索引项；已取消或被替代的 TODO 也直接删除，不保留失效清单。
+- 代码、测试或文档变更如果改变了 TODO 的事实基础、范围或优先级，必须在同一变更中更新相关 TODO。
+
 ## 认证与安全
 
 - 只使用 Public Client + Device Code Flow。Application Client ID 是公开配置标识，可保存在被 Git 忽略的本机实际配置（如 `.codex/config.toml` 或 Claude Code `local` scope）中，但不得出现在示例、提交、截图、Issue、日志或 Agent 输出中。

@@ -35,6 +35,11 @@ RUNTIME_FILES: tuple[Path, ...] = (
     Path("CHANGELOG.md"),
     Path("LICENSE"),
     Path("docs/acceptance_guide_zh.md"),
+    Path("docs/todos/README.md"),
+    Path("docs/todos/page_hierarchy_support.md"),
+    Path("docs/todos/page_section_copy_move.md"),
+    Path("docs/todos/reference_project_feature_parity.md"),
+    Path("docs/todos/three_level_crud_gap.md"),
     Path(".claude/mcp.example.json"),
     Path(".codex/config.example.toml"),
 )
