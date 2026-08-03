@@ -49,3 +49,9 @@
 - 脱敏证据：复核 Graph Page/Section 官方方法表，未发现 `markAsDeleted` 原生属性或操作。
 - 结论：项目中的 Move 统一表示为 `copy → verify → markAsDeleted`，最后一步是可逆的项目级逻辑标记，不执行源对象物理删除。
 - 下一步：分别确定 Page 与 Section 墓碑的存储和同步方案；方案确定前不注册 Move 工具。
+
+### 2026-08-03：将复制与移动边界纳入层级操作矩阵
+
+- 脱敏证据：复核 Graph v1.0 资源方法表与现有设计文档；未执行复制、写入或真实账号验证。
+- 结论：总览矩阵和 Section 业务操作目录已明确区分异步 Copy、组合式逻辑 Move 与不可用的原生 Move；SectionGroup 不具备原生 Copy，Notebook Copy 也不构成移动、备份或重命名。
+- 下一步：继续设计异步响应头校验与有界轮询；Section 墓碑持久化方案确定前，矩阵中的 Move 保持 `C`，不得注册为稳定工具。

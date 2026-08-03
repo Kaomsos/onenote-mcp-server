@@ -58,3 +58,9 @@
 - 脱敏证据：核对 Graph v1.0 的 Notebook、SectionGroup、Section、Page 资源属性、relationship 和方法表，并与当前 `OneNoteTools` 返回字段对照；未进行真实账号请求。
 - 结论：在 `docs/design/onenote_object_model/` 建立独立设计包，明确 `R/C/U/A/D/X` 字段能力、聚合更新语义、SectionGroup 的结构定位及原始 URL/身份字段的排除规则。只有 Page 标题和受控 HTML 元素具备创建后字段更新；Notebook、SectionGroup、Section 名称均只在创建时可写。
 - 下一步：依据设计先补集合分页和父 relationship 的 Mock，再实现受限 Page change-object；实现状态不得因设计文档完成而提前标记为已支持。
+
+### 2026-08-03：补齐对象层级的业务操作目录
+
+- 脱敏证据：复核 Graph v1.0 的 Notebook、SectionGroup、Section、Page 资源方法表和当前 MCP 工具注册；未进行真实账号请求。
+- 结论：对象模型现已把字段能力与业务操作分开描述，并用层级—操作矩阵区分当前 MCP、Graph 原生待开放、项目组合能力和平台/产品边界。Notebook、SectionGroup、Section 的查找、树、统计、复制、移动、删除、恢复、导出与共享需求不再因缺少字段写性而被遗漏，也没有被误标为已实现。
+- 下一步：以矩阵中的 `M` 部分项和 `G` 项为候选路线，优先补统一分页、父 relationship、SectionGroup 读取及异步复制客户端；`X` 项继续作为明确边界，不设计通用 Graph/Drive 绕路。
