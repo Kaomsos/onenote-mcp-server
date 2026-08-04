@@ -40,6 +40,10 @@ def test_release_archive_has_expected_runtime_files_and_checksum(tmp_path):
     with zipfile.ZipFile(result.archive) as archive:
         assert set(archive.namelist()) == expected
         assert {
+            f"{prefix}docs/README.md",
+            f"{prefix}docs/product/README.md",
+            f"{prefix}docs/product/local_onenote_com_mcp_research.md",
+            f"{prefix}docs/product/merge_onenote_agent_handler.md",
             f"{prefix}docs/todos/README.md",
             f"{prefix}docs/todos/page_content_search.md",
             f"{prefix}docs/todos/page_hierarchy_support.md",
