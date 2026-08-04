@@ -8,6 +8,7 @@
 - [Notebook、Section、Page 三级 CRUD 缺口](three_level_crud_gap.md)：定义可实现的完整度并形成受约束的演进路线。
 - [Page 子页面层级支持](page_hierarchy_support.md)：验证层级读取、树形重建及层级写入的 API 边界。
 - [Page 与 Section 复制、移动能力](page_section_copy_move.md)：调研异步复制端点、移动边界和安全实现条件。
+- [Page 正文范围搜索](page_content_search.md)：区分元数据 Query 与正文 Search，并设计 Section/SectionGroup 范围、候选 Page 硬限制和安全结果契约。
 
 ## 文档约定
 

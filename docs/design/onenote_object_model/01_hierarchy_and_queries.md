@@ -1,4 +1,6 @@
-# 完整层级与树查询契约
+# 完整层级与树读取契约
+
+本章定义 Get Path、Get Tree 和直接子节点 List 等组合读取，不把它们称为对象 Query。对象 Query 只按结构化元数据与 relationship 条件筛选对象；Page 正文 Search 另见总览和 Page 章节。
 
 ## Graph 原生结构
 
@@ -32,7 +34,7 @@ Page 的 Graph 父关系只有 `parentNotebook` 和 `parentSection`。Page 的�
 - Section → 顶层 Page：`graph`；
 - Page → Subpage、Subpage → Subsubpage：`derived`。
 
-## 路径查询
+## 获取路径
 
 路径结果从 Notebook 开始并包含目标自身：
 
@@ -59,7 +61,7 @@ Page 的 Graph 父关系只有 `parentNotebook` 和 `parentSection`。Page 的�
 
 任何父资源缺失、SectionGroup 循环、分页未完成或 Page 层级不一致都必须令 `complete=false`，并返回固定脱敏错误码；不得猜测缺失节点。
 
-## 子节点查询
+## 列出子节点
 
 本项目约定：
 
@@ -98,7 +100,7 @@ Graph 的 `level` 与 `order` 只读，因此树结构可读但不可写：不�
 
 ## 分页与完整性
 
-集合请求默认可能只返回首批结果。公开 List 应返回不透明 `next_cursor`；树重建与路径查询则必须内部完成全部相关分页后才允许 `complete=true`。
+集合请求默认可能只返回首批结果。公开 List 应返回不透明 `next_cursor`；Get Tree 与 Get Path 则必须内部完成全部相关分页后才允许 `complete=true`。
 
 ```json
 {
@@ -119,7 +121,7 @@ Graph 的 `level` 与 `order` 只读，因此树结构可读但不可写：不�
 | `label` | `D`，映射 `name/title` | 必读 | 不写 |
 | `depth` | `D` | 必读 | 不写 |
 | `relationship_source` | `D` | 必读 | 不写 |
-| `path` | `D`，依赖 Graph 父关系 | 路径查询必读 | 不写 |
+| `path` | `D`，依赖 Graph 父关系 | Get Path 必读 | 不写 |
 | `parent_page_id` | `D` | Page 树必读 | 不写 |
 | `has_children` | `D` | 建议读取 | 不写 |
 | `complete` | `D` | 必读 | 不写 |

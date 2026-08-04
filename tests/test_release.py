@@ -41,6 +41,7 @@ def test_release_archive_has_expected_runtime_files_and_checksum(tmp_path):
         assert set(archive.namelist()) == expected
         assert {
             f"{prefix}docs/todos/README.md",
+            f"{prefix}docs/todos/page_content_search.md",
             f"{prefix}docs/todos/page_hierarchy_support.md",
             f"{prefix}docs/todos/page_section_copy_move.md",
             f"{prefix}docs/todos/reference_project_feature_parity.md",

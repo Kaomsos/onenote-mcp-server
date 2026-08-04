@@ -1,10 +1,36 @@
-# Page、内容与资源字段模型
+# Page、内容与资源字段及 CRUD 操作模型
 
 ## Graph 能力边界
 
 主 Page、Subpage 与 Subsubpage 都是同一个 `onenotePage` 类型。Graph 只提供 `parentNotebook`、`parentSection`、只读 `level` 和只读 `order`，不提供 `parentPage` 或 `children` relationship。
 
 Page 可创建、读取元数据与 HTML、受控更新 HTML、删除和异步复制到 Section。只有 Page 标题和部分 HTML 元素有稳定的创建后更新能力。
+
+## CRUD 操作支持
+
+本节只列 Page 的基础 CRUD。状态沿用总览：`M` 为当前已实现，`G` 为 Graph 原生但 MCP 待实现，`P` 为需要本地组合的项目能力，`X` 为 Graph 不支持或项目明确不提供；`M（部分）` 表示工具已存在但契约尚未完整。
+
+| 类别 | 操作 | 状态 | Graph v1.0 支持 | 当前实现与待实现 |
+| --- | --- | --- | --- | --- |
+| `C` | 在 Section 下创建 Page | `M` | `POST /me/onenote/sections/{section-id}/pages` | `create_page` 已实现，并受 `ONENOTE_ENABLE_WRITES` 与 HTML 校验保护。 |
+| `R` | 列出全部 Page | `G` | 支持 OneNote 根级 Page 集合 | 待实现统一入口、分页、结构化元数据参数和规范化字段。 |
+| `R` | 列出 Section 的 Page | `M（部分）` | 支持 Section 下 List pages，可请求 `pagelevel=true` | `list_pages` 已实现首批基础字段；待统一分页并补 `level`、`order` 与父关系字段。 |
+| `R` | 获取 Page 元数据 | `M（部分）` | 支持按 ID Get | `get_page_metadata` 已实现基础字段；待补齐规范化父关系、层级和链接字段。 |
+| `R` | 获取 Page 正文 | `M` | 支持 `GET /me/onenote/pages/{page-id}/content` | `get_page_content` 已实现显式 HTML 读取；List、Query 和树读取仍不得默认返回 HTML。 |
+| `R` | 获取 Page 预览 | `G` | 支持 `GET /me/onenote/pages/{page-id}/preview` | 待实现受限短摘要读取，并限制返回长度和敏感内容进入日志。 |
+| `R` | 查询 Page | `G` | 支持在 Page 集合上使用受支持的 OData 元数据条件 | 待实现结构化 `query_pages`；标题查询属于元数据 Query，不读取正文，不接受原始 OData。 |
+| `U` | 重命名 Page | `G` | 支持内容 PATCH：`target=title`、`action=replace` | 待实现专用 `rename_page`，不得让调用者提交任意 change-object。 |
+| `U` | 追加 Page 内容 | `M（部分）` | 支持 `append`，但 target 类型受限 | `update_page_content` 已实现固定 `append`；待把 target 改为受校验的元素引用并补 `includeIDs=true` 流程。 |
+| `U` | 前置 Page 内容 | `G` | 支持 `prepend`，但 target 类型受限 | 待实现受控 action、target 与 HTML 校验。 |
+| `U` | 插入 Page 内容 | `G` | 支持 `insert`，且必须指定合法 sibling position | 待实现 `before`/`after` 白名单、元素定位与 HTML 校验。 |
+| `U` | 替换 Page 内容元素 | `G` | 支持 `replace` 指定元素；`body` 不能整体替换 | 待实现受控元素替换；不能提供任意整页覆盖。 |
+| `D` | 删除 Page | `M` | 支持 `DELETE /me/onenote/pages/{page-id}` | `delete_page` 已实现；必须保留写入开关、删除开关、标题确认和删除前回读。 |
+
+### Query 与 Search 边界
+
+`query_pages` 只按标题、时间、层级、父关系等 Page 元数据查询对象，属于上表的 Read。`search_pages` 检索 Page 正文，Graph 没有对应的 OneNote 正文搜索端点，因此它是 Page 层级的项目组合能力 `P`，不是 Graph 原生 CRUD，也不扩展为 Section 或 SectionGroup 自身的 Search。
+
+首期 Search 只允许 `section_id` 或 `section_group_id` 二选一。调用前必须只枚举候选 Page 元数据；候选数大于服务端配置 `ONENOTE_SEARCH_MAX_PAGES`（默认建议 `100`）时，在读取任何 Page HTML 前以 `search_scope_too_large` 拒绝。SectionGroup 的全部后代 Section 共享同一 Page 预算，不得按 Section 重置，也不得在超限时返回不完整匹配。更完整的资源放大、正文提取和隐私边界见总览与 `docs/todos/page_content_search.md`。
 
 ## 基础元数据
 
@@ -40,10 +66,10 @@ Page 标题更新使用：
 | --- | --- | --- | --- | --- | --- |
 | `notebook_id` | `parentNotebook.id` | 必读 | 不更新 | `R` | 官方父关系 |
 | `section_id` | `parentSection.id` | 必读 | 创建时由端点选择 | `R/C` | 创建后不能 PATCH |
-| `graph_level` | `level` | 树查询必读 | 不写 | `R` | 只读；需 `pagelevel=true` |
-| `order` | `order` | 树查询必读 | 不写 | `R` | 只读；Section 内顺序 |
-| `parent_page_id` | 无 | 树查询必读 | 不写 | `D` | 本地层级栈推导 |
-| `depth` | 无 | 树查询必读 | 不写 | `D` | 标准化相对深度 |
+| `graph_level` | `level` | Get Tree 必读 | 不写 | `R` | 只读；需 `pagelevel=true` |
+| `order` | `order` | Get Tree 必读 | 不写 | `R` | 只读；Section 内顺序 |
+| `parent_page_id` | 无 | Get Tree 必读 | 不写 | `D` | 本地层级栈推导 |
+| `depth` | 无 | Get Tree 必读 | 不写 | `D` | 标准化相对深度 |
 | `has_children` | 无 | 建议读取 | 不写 | `D` | 完整列表后计算 |
 | `children` | 无 | 后代查询必读 | 不写 | `D` | 本地树重建 |
 
