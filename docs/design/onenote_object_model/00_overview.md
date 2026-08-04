@@ -114,7 +114,7 @@ Notebook、SectionGroup、Section 的 `displayName` 没有稳定更新方法；C
 
 | 类别 | 中文操作 | 英文标准名 | 建议代码动词 | 基本调用参数 | 统一语义 |
 | --- | --- | --- | --- | --- | --- |
-| `C` | 创建 | Create | `create_*` | `parent_id?`、`name` 或 `title`、资源特有创建内容 | 在调用者明确指定的父级或位置新建对象；返回新资源，不能表示对原对象的重命名、移动或恢复。Notebook 没有父 ID，Page 可另含 `content_html?`。 |
+| `C` | 创建 | Create | `create_*` | `parent_id?`、`name` 或 `title`、资源特有创建内容 | 在调用者明确指定的父级或位置新建对象；返回新资源，不会改变既有资源的身份或位置。Notebook 没有父 ID，Page 可另含 `content_html?`。 |
 | `R` | 列出 | List | `list_*` | `parent_id?`、`cursor?`、`limit?` | 在指定范围读取一组同类对象。结果必须考虑分页；默认只返回直接成员，不递归读取完整后代树。 |
 | `R` | 获取 | Get | `get_*` | `<resource>_id`、`include?` | 通过已确定的资源 ID 读取单个对象的元数据、必要关系或显式请求的内容；不负责按条件查找。 |
 | `R` | 查询 | Query | `query_*` | 资源类型对应的范围 ID、`criteria?`、`order_by?`、`cursor?`、`limit?` | 按对象的名称、标题、时间、状态或 Graph relationship 等元数据条件返回候选集合。公开工具只接受结构化且经过校验的条件，不查询 Page 正文，也不接受任意 OData、Graph URL 或原始查询表达式。 |
@@ -125,15 +125,12 @@ Notebook、SectionGroup、Section 的 `displayName` 没有稳定更新方法；C
 | `U` | 更新内容 | Update Content | `update_*_content` | `<resource>_id`、`target`、`action`、`content`、`position?` | 保持资源身份不变并修改其内容；在当前对象模型中主要适用于 Page 的受控 HTML change-object。 |
 | `D` | 删除 | Delete | `delete_*` | `<resource>_id`、`expected_label`、`expected_parent_id?` | 移除调用者精确确认的现有对象。逻辑标记和移入回收站不能笼统称为 Delete。 |
 | `O` | 变更子级集合 | Mutate Children | 使用具体动词，如 `create_page`、`delete_page` | 明确的父资源 ID、子资源输入；破坏性动作另含确认参数 | 通过创建、更新、复制或删除子资源来改变父对象所管理的集合。它不是父对象字段 PATCH，也不设计含糊的 `manage_*` 工具。 |
-| `O` | 复制 | Copy | `copy_*` | `source_id`、`target_parent_id?`、`rename_as?` | 保留源对象并创建具有新 ID 的副本；复制不是原地更新、移动、备份或恢复。 |
+| `O` | 复制 | Copy | `copy_*` | `source_id`、`target_parent_id?`、`rename_as?` | 保留源对象并创建具有新 ID 的副本；复制不是原地更新、移动或备份。 |
 | `O` | 移动 | Move | `move_*` | `<resource>_id`、`target_parent_id`、`expected_label?` | 表达业务位置迁移；若使用 `copy → verify → markAsDeleted`，只能称为项目级 Logical Move。 |
-| `O` | 重新挂接 | Reparent | `reparent_*` | `<resource>_id`、`target_parent_id` | 保持资源身份不变并改变直接父级；它比 Move 语义更窄，不能用 Copy 冒充。 |
 | `O` | 重新排序 | Reorder | `reorder_*` | `<resource>_id`、`reference_id?`、`position` | 改变同级对象在 OneNote 中的真实先后顺序；只调整本地返回顺序不算重新排序。 |
 | `O` | 缩进 | Indent | `indent_page` | `page_id`、`expected_parent_page_id?` | 增加 Page 层级，使其成为前序 Page 的后代；只适用于 Page。 |
 | `O` | 取消缩进 | Outdent | `outdent_page` | `page_id`、`expected_parent_page_id?` | 减少 Page 层级，使其提升到更高层；只适用于 Page。 |
-| `O` | 恢复 | Restore | `restore_*` | `deletion_ref`、`target_parent_id?`、`expected_label?` | 撤销删除并恢复原对象身份、位置和内容；重新创建同名对象或从副本创建新对象不属于恢复。 |
-| `O` | 导出 | Export | `export_*` | `<resource>_id`、`format`、`destination?` | 生成可移植、可恢复的数据；复制对象或读取树快照不自动等同于导出或备份。 |
-| `O` | 共享 | Share | `share_*` | `<resource>_id`、`principal`、`role` | 读取或修改协作权限；返回 Web/客户端导航链接不等同于共享管理。 |
+| `O` | 导出 | Export | `export_*` | `<resource>_id`、`format`、`destination?` | 生成可移植、可重建的数据；复制对象或读取树快照不自动等同于导出或备份。 |
 
 参数名必须使用明确的资源语义，例如 `notebook_id`、`section_group_id`、`section_id`、`page_id`，不得在公开工具中只写 `id`、`parent_id` 或 `scope_id`。表中的 `<resource>_id` 只是概念占位符，`?` 表示可选参数；也不得用 `self_url`、`pages_url` 等原始 Graph URL 替代资源 ID。命名时优先使用上表动词，不混用 `read_*`、`fetch_*`、`load_*` 表示 Get，也不使用 `get_all_*` 表示 List。异步操作若拆成开始和状态查询，使用 `start_*` 与 `get_operation`；若工具内部等待完成，仍使用业务动词，例如 `copy_section`。
 
@@ -156,17 +153,22 @@ Notebook、SectionGroup、Section 的 `displayName` 没有稳定更新方法；C
 | `O` | 变更子级集合 | `M` 部分：Section/Page；SectionGroup 为 `G` | `G`：Section/子 SectionGroup | `M`：Page 增改删；页面树变形除外 | `P`：图片/附件由 HTML 管理；子 Page 不是原生集合 |
 | `O` | 复制 | `G`：异步 | `X` | `G`：异步 | `G`：异步 |
 | `O` | 移动 | `X`：跨位置迁移 | `X` | `P`：复制、验证、逻辑标记 | `P`：复制、验证、逻辑标记 |
-| `O` | 重新挂接 | `—`：树根 | `X` | `X` | `X` |
 | `O` | 重新排序 | `X` | `X` | `X` | `X` |
 | `O` | 缩进 | `—` | `—` | `—` | `X` |
 | `O` | 取消缩进 | `—` | `—` | `—` | `X` |
-| `O` | 恢复 | `X` | `X` | `X` | `X` |
 | `O` | 导出 | `X` | `X` | `X` | `X` |
-| `O` | 共享 | `X` | `X` | `X` | `X` |
 
 ### 操作边界结论
 
 矩阵中的 `X` 仍保留为业务需求记录：它表示用户可能需要该动作，但当前不能据此构造任意 Graph、Drive 或 UI 自动化绕路。尤其不得把 Copy 说成原地重命名，把 `copy → verify → markAsDeleted` 说成 Graph 原生 Move，或把测试控制面的 Drive 清理说成 Notebook 产品级 Delete。
+
+### 不纳入操作模型的功能
+
+本项目不把重新挂接、恢复或共享列为候选操作。它们没有可在当前安全范围内交付的稳定对象级语义：
+
+- 重新挂接要求在保持资源 ID 的前提下更换直接父级；稳定 Graph v1.0 没有这样的 OneNote 对象方法，Copy 会产生新 ID，不能代替它。
+- 恢复要求底层 API 具有受支持的对象删除生命周期和还原入口；OneNote 对象 API 并未提供这一对称模型。OneDrive 回收站属于额外 Drive scope 和测试控制面，不能成为产品数据面能力。
+- 共享涉及协作主体、角色以及 Drive/Site/身份权限管理，超出 `/me/onenote/` allowlist 和最小数据暴露范围；导航链接或只读共享状态也不等同于权限管理。
 
 ### Query 与 Search 边界
 

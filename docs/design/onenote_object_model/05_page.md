@@ -75,7 +75,7 @@ Page 标题更新使用：
 
 Page 创建时通过 `POST /me/onenote/sections/{section-id}/pages` 选择目标 Section。`copyToSection` 创建新 Page，原 Page 保留，不能视为 `section_id` 更新。
 
-Graph 不支持写入 `level`、`order`、`parent_page_id`，因此不能创建子 Page、缩进、提升、重新挂接或排序。
+Graph 不支持写入 `level`、`order`、`parent_page_id`，因此不能创建子 Page、缩进、提升或排序。
 
 ## HTML 内容
 

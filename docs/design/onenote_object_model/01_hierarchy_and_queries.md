@@ -96,7 +96,7 @@ Page 后代结果应同时包含：
 
 OneNote 客户端通常允许两层 Subpage，即主 Page、Subpage、Subsubpage三层。实现应保留原始 `graph_level`，不要把本地 `depth` 冒充 Graph 值；遇到超出预期但结构自洽的数据可保留，遇到不自洽数据则安全失败。
 
-Graph 的 `level` 与 `order` 只读，因此树结构可读但不可写：不能通过稳定 API 创建子 Page、缩进、提升、重新挂接或排序。
+Graph 的 `level` 与 `order` 只读，因此树结构可读但不可写：不能通过稳定 API 创建子 Page、缩进、提升或排序。
 
 ## 分页与完整性
 
