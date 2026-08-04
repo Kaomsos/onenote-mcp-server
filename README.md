@@ -2,7 +2,7 @@
 
 一个采用 Microsoft Device Code Flow 的本地 FastMCP 服务，用于读取和管理当前用户的 OneNote。创建与更新操作默认关闭，避免 Agent 意外改动笔记。
 
-开发中的探索事项统一登记在 [`docs/todos/`](docs/todos/README.md)。Agent 和维护者开始 non-trivial 工作前应先检查索引；阶段完成时更新脱敏进展，整个事项完成后将长期结论迁入正式文档或测试并删除对应 TODO。
+产品定位与文档维护规则见 [`docs/`](docs/README.md) 和 [`docs/product/`](docs/product/README.md)。开发中的探索事项统一登记在 [`docs/todos/`](docs/todos/README.md)。Agent 和维护者开始 non-trivial 工作前应先检查索引；阶段完成时更新脱敏进展，整个事项完成后将长期结论迁入正式文档或测试并删除对应 TODO。
 
 ## 安全模型
 

@@ -55,3 +55,9 @@
 - 脱敏证据：复核 Graph v1.0 资源方法表与现有设计文档；未执行复制、写入或真实账号验证。
 - 结论：总览矩阵和 Section 业务操作目录已明确区分异步 Copy、组合式逻辑 Move 与不可用的原生 Move；SectionGroup 不具备原生 Copy，Notebook Copy 也不构成移动、备份或重命名。
 - 下一步：继续设计异步响应头校验与有界轮询；Section 墓碑持久化方案确定前，矩阵中的 Move 保持 `P`（项目组合），不得注册为稳定工具。
+
+### 2026-08-04：评估 Windows COM 的复制与移动补充路线
+
+- 脱敏证据：静态核对微软 OneNote Application 接口的 `UpdateHierarchy`、`MergeSections`、`DeleteHierarchy`、`GetPageContent` 和 `UpdatePageContent`，并对照两个公开本地 COM MCP；未执行真实 Notebook 写入。
+- 结论：COM 没有通用 Copy 方法，组合复制仍会产生新 ID，Graph 原生 Notebook/Section/Page Copy 应保持优先。COM 的显著新增能力是 `UpdateHierarchy` 官方明确支持同一 Notebook 内移动 Section；跨 Section Page Move 仍只能组合为复制、验证后将源 Page 移入 OneNote 回收站，不能称为保留 ID 的原生 Move。跨 Notebook Section Move、SectionGroup Move 与各类重挂接仍需验证。
+- 下一步：若引入可选 COM adapter，先在唯一命名隔离 Notebook 中分别验证三种同 Notebook Section 父级转换及 ID 保持；Page 组合 Move 必须另行设计删除开关、保真验证和部分失败恢复，不能复用 Graph 逻辑墓碑语义而不改名。

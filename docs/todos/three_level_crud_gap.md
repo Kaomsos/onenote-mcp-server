@@ -77,3 +77,9 @@
 - 脱敏证据：逐项对照 `OneNoteTools` 当前注册工具与对象模型总览，将 Notebook、SectionGroup、Section、Page 章节统一为 `C/R/U/D` 支持表；未调用 Graph 或执行真实账号验证。
 - 结论：每章现已分列 Graph v1.0 支持、当前 MCP 状态和待实现项。SectionGroup 被纳入基础 CRUD 基线；Notebook、SectionGroup、Section 的子资源变化不再冒充父对象原地 Update，Page 的四种内容 change action 分行记录。
 - 下一步：优先实现统一分页、SectionGroup List/Get、SectionGroup 下创建 Section、结构化 Query 与受限 Page Update，并为每项功能补 Mock。
+
+### 2026-08-04：记录 COM 本地 CRUD 的独立能力边界
+
+- 脱敏证据：静态核对微软 OneNote Application 接口与两个公开本地 COM MCP；本机仅验证 `OneNote.Application` 可实例化，未执行 CRUD 写入。
+- 结论：COM 可原生创建四层对象，并删除 SectionGroup、Section 和 Page；`UpdateHierarchy` 还明确支持 Section 重命名和同 Notebook 移动。Notebook 仍没有 COM 删除方法，关闭 Notebook 不等于删除。上述能力属于可选 Windows 本地 adapter，不能改变本 TODO 中 Graph 生产后端的支持状态或权限边界。
+- 下一步：Graph CRUD 实施路线保持不变；COM 若立项应新建独立 adapter 任务，复用写入/删除双开关、确认信息、修改时间校验和回读验证，不公开任意层级 XML。

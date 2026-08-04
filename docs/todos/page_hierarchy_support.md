@@ -43,3 +43,9 @@
 - 脱敏证据：核对 Notebook/SectionGroup/Section/Page relationship、`pagelevel=true`、`level`、`order` 和 Page 内容资源文档；检查当前工具尚未返回层级字段。
 - 结论：在 `docs/design/onenote_object_model/` 固化完整路径、一级子节点、Page 全部后代、`relationship_source`、分页完成性和安全失败码；SectionGroup 作为 Graph 原生递归节点，Page 父关系明确标为本地推导。
 - 下一步：编写分页、嵌套 SectionGroup、三级 Page、非法跳级、顺序冲突和跨分页边界的 Mock 测试，然后实现只读层级查询；未获得授权前不做 live 验证。
+
+### 2026-08-04：补充 Windows COM 层级写入候选路线
+
+- 脱敏证据：静态核对微软 OneNote Application 接口的 `UpdateHierarchy` 和 `CreateNewPage`；未对真实 Page 执行排序或层级写入。
+- 结论：Graph 的 `level`/`order` 仍为只读；可选 COM adapter 则有官方明确的 Section 内 Page 排序能力，并能在创建 Page 时控制位置和建立子 Page。官方文档没有同等明确保证对既有 Page 执行缩进、取消缩进或跨 Section 保留 ID 移动，因此这些操作仍保持待验证，不能由 XML 字段存在直接推定为可交付。
+- 下一步：COM 路线若立项，优先验证保持 Page ID 的 `reorder_page`；再以独立测试覆盖既有 Page 缩进、取消缩进、整棵子树移动和异常层级，验证前不修改 Graph 对象模型的交付状态。
